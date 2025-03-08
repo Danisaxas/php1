@@ -20,6 +20,9 @@ function callApi($method, $data = []) {
 $content = file_get_contents("php://input");
 $update = json_decode($content, true);
 
+// Guardar el contenido del mensaje en un archivo de log para depuración
+file_put_contents('log.txt', print_r($update, true), FILE_APPEND);
+
 if (isset($update['message'])) {
     $message = $update['message'];
     $chat_id = $message['chat']['id'];
