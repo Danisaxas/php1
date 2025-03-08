@@ -1,36 +1,42 @@
 <?php
-// index.php
+// Incluye el archivo de configuración
+include_once 'config/config.php';
 
-// Cargar la configuración del bot
-require_once 'config/config.php';
-
-// Obtener los datos del mensaje recibido
-$update = json_decode(file_get_contents('php://input'), true);
-$message = $update['message'] ?? null;
-$userId = $message['from']['id'] ?? null;
-$chatId = $message['chat']['id'] ?? null;
-$messageId = $message['message_id'] ?? null;
-$text = $message['text'] ?? '';
-
-// Verificar si hay un comando
-if (preg_match('/^[\/\.,\$](?:me)(?:\s+(.+))?$/i', $text, $matches)) {
-    include 'Tools/me.php';
-} else {
-    // Responder con un mensaje por defecto
-    sendMessage($chatId, "Comando no reconocido.");
+// Función para llamar a la API de Telegram
+function callApi($method, $data = []) {
+    $url = "https://api.telegram.org/bot" . BOT_TOKEN . "/" . $method;
+    $options = [
+        'http' => [
+            'method' => 'POST',
+            'header' => "Content-type: application/x-www-form-urlencoded\r\n",
+            'content' => http_build_query($data)
+        ]
+    ];
+    $context = stream_context_create($options);
+    return file_get_contents($url, false, $context);
 }
 
-// Función para enviar un mensaje
-function sendMessage($chatId, $text) {
-    global $token;
+// Procesar mensajes entrantes
+$content = file_get_contents("php://input");
+$update = json_decode($content, true);
 
-    $url = "https://api.telegram.org/bot$token/sendMessage";
-    $data = [
-        'chat_id' => $chatId,
-        'text' => $text,
-        'parse_mode' => 'HTML'
-    ];
-    
-    file_get_contents($url . '?' . http_build_query($data));
+if (isset($update['message'])) {
+    $message = $update['message'];
+    $chat_id = $message['chat']['id'];
+    $message_id = $message['message_id'];
+    $userId = $message['from']['id'];
+    $text = $message['text'] ?? '';
+
+    // Detectar el comando /me
+    if (preg_match('/^[\/\.,\$](me)(?:\s+(.+))?$/i', $text, $matches)) {
+        // Cargar el archivo que maneja el comando '/me'
+        include_once 'Tools/me.php';
+    } else {
+        // Responder si no se encuentra el comando
+        callApi('sendMessage', [
+            'chat_id' => $chat_id,
+            'text' => 'Comando no reconocido.',
+        ]);
+    }
 }
 ?>
